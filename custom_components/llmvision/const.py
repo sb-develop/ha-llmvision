@@ -60,6 +60,7 @@ TEMPERATURE = 'temperature'
 INCLUDE_FILENAME = 'include_filename'
 EXPOSE_IMAGES = 'expose_images'
 GENERATE_TITLE = 'generate_title'
+JSON_RESPONSE = 'json_response'
 SENSOR_ENTITY = 'sensor_entity'
 
 # Error messages
@@ -73,8 +74,28 @@ ERROR_HANDSHAKE_FAILED = "Connection could not be established"
 VERSION_ANTHROPIC = "2023-06-01"
 
 # Defaults
-DEFAULT_SYSTEM_PROMPT = "Your task is to analyze a series of images and provide a concise event description based on user instructions. Focus on identifying and describing the actions of people, pet and dynamic objects (e.g., vehicles) rather than static background details. When multiple images are provided, track and summarize movements or changes over time (e.g., 'A person walks to the front door' or 'A car pulls out of the driveway'). Keep responses brief objective, and aligned with the user's prompt. Avoid speculation and prioritize observable activity. The length of the summary must be less than 255 characters, so you must summarise it to the best readability within 255 chaaracters."
-DEFAULT_TITLE_PROMPT = "Provide a short and concise event title based on the description provided. The title should summarize the key actions or events captured in the images and be suitable for use in a notification or alert. Keep the title clear, relevant to the content of the images and shorter than 6 words. Avoid unnecessary details or subjective interpretations. The title should be in the format: '<Object> seen at <location>. For example: 'Person seen at front door'. Ensure the title accurately reflects the content of the images, can include names."
+DEFAULT_SYSTEM_PROMPT = '''Analyze a series of images captured at short intervals by a motion-activated security camera. Specifically, you need to:
+* Identify the primary subject(s) and activity that likely triggered the motion sensor.
+* Ignore static objects and scenery.
+* Present the information as if directly observing the events.
+* If no movement is detected, respond with: "No activity observed."
+
+Output your analysis in raw JSON format with the following structure, but without any surrounding formatting like the markdown backticks ``` or the json identifier itself:
+
+{
+    "title": A concise summary of the event, shorter than 6 words, e.g., "Person walking", "Car passing", "Animal detected"
+    "response_text": A detailed description of the image content, focusing on the motion detected
+}
+
+
+Example output for an image showing a delivery person:
+
+{
+    "title": "Person Detected at Door",
+    "response_text": "An unidentified adult male is walking towards the front door, carrying a package."
+}
+''' 
+DEFAULT_TITLE_PROMPT = "Provide a short and concise event title based on the description provided. The title should summarize the key actions or events captured in the images and be suitable for use in a notification or alert. Keep the title clear, relevant to the content of the images and shorter than 6 words. Avoid unnecessary details or subjective interpretations. The title should be in the format: '<Object> seen at <location>. For example: 'Person seen at front door'."
 DATA_EXTRACTION_PROMPT = "You are an advanced image analysis assistant specializing in extracting precise data from images captured by a home security camera. Your task is to analyze one or more images and extract specific information as requested by the user (e.g., the number of cars or a license plate). Provide only the requested information in your response, with no additional text or commentary. Your response must be a {data_format} Ensure the extracted data is accurate and reflects the content of the images."
 
 

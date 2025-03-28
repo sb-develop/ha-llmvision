@@ -101,8 +101,8 @@ class MediaProcessor:
         mu2 = np.mean(current_frame_np, dtype=np.float64)
 
         # Calculate variance (sigma^2) and covariance (sigma12)
-        sigma1_sq = np.var(previous_frame_np, dtype=np.float64, mean=mu1)
-        sigma2_sq = np.var(current_frame_np, dtype=np.float64, mean=mu2)
+        sigma1_sq = np.var(previous_frame_np, dtype=np.float64)
+        sigma2_sq = np.var(current_frame_np, dtype=np.float64)
         sigma12 = np.cov(previous_frame_np.flatten(),
                          current_frame_np.flatten(),
                          dtype=np.float64)[0, 1]

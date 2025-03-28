@@ -244,15 +244,34 @@ class Request:
         # Make call to provider
         call.model = call.model if call.model and call.model != 'None' else provider_instance.default_model
         response_text = await provider_instance.vision_request(call)
+        response = {}
+        # try to load response_text as json
+        if call.json_response and response_text is not None:
+            try:
+                markdown_prefix = "```"
+                json_prefix = "json"
+                json_text = response_text
+                # remove markdown prefix
+                if json_text.startswith(markdown_prefix):
+                    json_text = json_text[len(markdown_prefix):]
+                if json_text.endswith(markdown_prefix):
+                    json_text = json_text[:-len(markdown_prefix)]
+                # remove json prefix
+                if json_text.startswith(json_prefix):
+                    json_text = json_text[len(json_prefix):]
+                response = json.loads(json_text)
+            except json.JSONDecodeError:
+                pass
+        if "response_text" not in response:
+            response["response_text"] = response_text
 
         if call.generate_title:
-            call.message = call.memory.title_prompt + "Create a title for this text: " + response_text
+            call.message = call.memory.title_prompt + "Create a title for this text: " + response.get("response_text", response_text)
             gen_title = await provider_instance.title_request(call)
+            response["title"]  = re.sub(r'[^a-zA-Z0-9ŽžÀ-ÿ\s]', '', gen_title)
 
-            return {"title": re.sub(r'[^a-zA-Z0-9ŽžÀ-ÿ\s]', '', gen_title), "response_text": response_text}
-        else:
-            return {"response_text": response_text}
-
+        return response
+    
     def add_frame(self, base64_image, filename):
         self.base64_images.append(base64_image)
         self.filenames.append(filename)

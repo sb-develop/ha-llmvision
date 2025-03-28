@@ -104,6 +104,13 @@ image_analyzer:
       default: false
       selector:
         boolean:
+    json_response:
+      name: JSON Response
+      required: false
+      description: Assume that the reponse is a JSON object
+      default: false
+      selector:
+        boolean:
     expose_images:
       name: Expose Images
       description: Save the key frame. This will save analyzed frames in /www/llmvision so they can be used for notifications. The file path will be included in the response.
@@ -253,6 +260,13 @@ video_analyzer:
       default: false
       selector:
         boolean:
+    json_response:
+      name: JSON Response
+      required: false
+      description: Assume that the reponse is a JSON object
+      default: false
+      selector:
+        boolean:
     expose_images:
       name: Expose Images
       description: Save the key frame. This will save analyzed frames in /www/llmvision so they can be used for notifications. The file path will be included in the response.
@@ -381,6 +395,13 @@ stream_analyzer:
       default: false
       selector:
         boolean:
+    json_response:
+      name: JSON Response
+      required: false
+      description: Assume that the reponse is a JSON object
+      default: false
+      selector:
+        boolean:
     expose_images:
       name: Expose Images
       description: Save the key frame. This will save analyzed frames in /www/llmvision so they can be used for notifications. The file path will be included in the response.
@@ -503,6 +524,13 @@ data_analyzer:
       name: Generate Title
       required: false
       description: Generate a title. (Used for notifications and remembered events)
+      default: false
+      selector:
+        boolean:
+    json_response:
+      name: JSON Response
+      required: false
+      description: Assume that the reponse is a JSON object
       default: false
       selector:
         boolean:
