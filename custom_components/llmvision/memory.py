@@ -43,7 +43,7 @@ class Memory:
 
     def _get_memory_images(self, memory_type="OpenAI") -> list:
         content = []
-        memory_prompt = "The following images along with descriptions serve as reference. They are not to be mentioned in the response."
+        memory_prompt = "The following images are \"known entities\" along with descriptions."
 
         if memory_type == "OpenAI":
             if self.memory_images:

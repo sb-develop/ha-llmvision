@@ -55,6 +55,7 @@ from .const import (
     INCLUDE_FILENAME,
     EXPOSE_IMAGES,
     GENERATE_TITLE,
+    JSON_RESPONSE,
     SENSOR_ENTITY,
     DATA_EXTRACTION_PROMPT,
 )
@@ -353,6 +354,7 @@ class ServiceCallData:
         self.include_filename = data_call.data.get(INCLUDE_FILENAME, False)
         self.expose_images = data_call.data.get(EXPOSE_IMAGES, False)
         self.generate_title = data_call.data.get(GENERATE_TITLE, False)
+        self.json_response = data_call.data.get(JSON_RESPONSE, False)
         self.sensor_entity = data_call.data.get(SENSOR_ENTITY, "")
 
         # ------------ Remember ------------

@@ -612,6 +612,7 @@ action:
       remember: !input remember
       expose_images: "{{preview_mode == 'Snapshot' or remember}}"
       generate_title: !input remember
+      json_response: false
       include_filename: true
       max_frames: !input max_frames
       target_width: !input target_width
