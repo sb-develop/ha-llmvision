@@ -47,6 +47,7 @@ from .const import (
     IMAGE_ENTITY,
     VIDEO_FILE,
     EVENT_ID,
+    VIDEO_PROCESSOR,
     FRIGATE_RETRY_ATTEMPTS,
     FRIGATE_RETRY_SECONDS,
     INTERVAL,
@@ -55,6 +56,7 @@ from .const import (
     INCLUDE_FILENAME,
     EXPOSE_IMAGES,
     GENERATE_TITLE,
+    JSON_RESPONSE,
     SENSOR_ENTITY,
     DATA_EXTRACTION_PROMPT,
     DEFAULT_OPENAI_MODEL,
@@ -526,6 +528,7 @@ class ServiceCallData:
             "\n") if data_call.data.get(EVENT_ID) else None
         self.interval = int(data_call.data.get(INTERVAL, 2))
         self.duration = int(data_call.data.get(DURATION, 10))
+        self.video_processor = data_call.data.get(VIDEO_PROCESSOR, None)
         self.frigate_retry_attempts = int(
             data_call.data.get(FRIGATE_RETRY_ATTEMPTS, 2))
         self.frigate_retry_seconds = int(
@@ -537,6 +540,7 @@ class ServiceCallData:
         self.include_filename = data_call.data.get(INCLUDE_FILENAME, False)
         self.expose_images = data_call.data.get(EXPOSE_IMAGES, False)
         self.generate_title = data_call.data.get(GENERATE_TITLE, False)
+        self.json_response = data_call.data.get(JSON_RESPONSE, False)
         self.sensor_entity = data_call.data.get(SENSOR_ENTITY, "")
 
         # ------------ Remember ------------
@@ -640,15 +644,31 @@ def setup(hass, config):
                           temperature=call.temperature,
                           )
         processor = MediaProcessor(hass, request)
-        request = await processor.add_videos(video_paths=call.video_paths,
-                                             event_ids=call.event_id,
-                                             max_frames=call.max_frames,
-                                             target_width=call.target_width,
-                                             include_filename=call.include_filename,
-                                             expose_images=call.expose_images,
-                                             frigate_retry_attempts=call.frigate_retry_attempts,
-                                             frigate_retry_seconds=call.frigate_retry_seconds
-                                             )
+        fallback = True
+        if call.video_processor:
+            # Use the specified video processor
+            try:
+                request = await processor.add_videos_remote(video_paths=call.video_paths,
+                                                            remote_url=call.video_processor,
+                                                            max_frames=call.max_frames,
+                                                            target_width=call.target_width,
+                                                            include_filename=call.include_filename,
+                                                            expose_images=call.expose_images,
+                                                            )
+                fallback = False
+            except Exception:
+                fallback = True
+        if fallback:
+            # Use the default MediaProcessor
+            request = await processor.add_videos(video_paths=call.video_paths,
+                                                event_ids=call.event_id,
+                                                max_frames=call.max_frames,
+                                                target_width=call.target_width,
+                                                include_filename=call.include_filename,
+                                                expose_images=call.expose_images,
+                                                frigate_retry_attempts=call.frigate_retry_attempts,
+                                                frigate_retry_seconds=call.frigate_retry_seconds
+                                                )
         call.memory = Memory(hass)
         await call.memory._update_memory()
 
