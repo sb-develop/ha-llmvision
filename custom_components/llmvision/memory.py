@@ -157,11 +157,11 @@ class Memory:
                     img = img.convert("RGB")
 
                 # Encode the image to base64
-                img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format='JPEG')
-                base64_image = base64.b64encode(
-                    img_byte_arr.getvalue()).decode('utf-8')
-                encoded_images.append(base64_image)
+                with io.BytesIO() as img_byte_arr:
+                    img.save(img_byte_arr, format='JPEG')
+                    base64_image = base64.b64encode(
+                        img_byte_arr.getvalue()).decode('utf-8')
+                    encoded_images.append(base64_image)
 
         return encoded_images
 
