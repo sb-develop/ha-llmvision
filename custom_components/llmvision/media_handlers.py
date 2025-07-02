@@ -39,11 +39,11 @@ class MediaProcessor:
 
     async def _encode_image(self, img):
         """Encode image as base64"""
-        img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format='JPEG')
-        base64_image = base64.b64encode(
-            img_byte_arr.getvalue()).decode('utf-8')
-        return base64_image
+        with io.BytesIO() as img_byte_arr:
+            img.save(img_byte_arr, format='JPEG')
+            base64_image = base64.b64encode(
+                img_byte_arr.getvalue()).decode('utf-8')
+            return base64_image
 
     async def _save_clip(self, clip_data=None, clip_path=None, image_data=None, image_path=None):
         # Ensure dir exists
@@ -144,21 +144,22 @@ class MediaProcessor:
 
         elif image_data:
             # Convert the image to base64
-            img_byte_arr = io.BytesIO()
-            img_byte_arr.write(image_data)
-            img = await self.hass.loop.run_in_executor(None, Image.open, img_byte_arr)
-            with img:
-                await self.hass.loop.run_in_executor(None, img.load)
-                img = self._convert_to_rgb(img)
-                # calculate new height based on aspect ratio
-                width, height = img.size
-                aspect_ratio = width / height
-                target_height = int(target_width / aspect_ratio)
+            with io.BytesIO() as img_byte_arr:
+                img_byte_arr.write(image_data)
+                img_byte_arr.seek(0)
+                img = await self.hass.loop.run_in_executor(None, Image.open, img_byte_arr)
+                with img:
+                    await self.hass.loop.run_in_executor(None, img.load)
+                    img = self._convert_to_rgb(img)
+                    # calculate new height based on aspect ratio
+                    width, height = img.size
+                    aspect_ratio = width / height
+                    target_height = int(target_width / aspect_ratio)
 
-                if width > target_width or height > target_height:
-                    img = img.resize((target_width, target_height))
+                    if width > target_width or height > target_height:
+                        img = img.resize((target_width, target_height))
 
-                base64_image = await self._encode_image(img)
+                    base64_image = await self._encode_image(img)
         elif img:
             with img:
                 img = self._convert_to_rgb(img)
