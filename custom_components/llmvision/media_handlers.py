@@ -612,7 +612,7 @@ class MediaProcessor:
             _LOGGER.info(f"Failed to delete tmp folders: {e}")
         return self.client
 
-    async def add_videos_remote(self, video_paths, remote_url, max_frames, target_width, include_filename, expose_images):
+    async def add_videos_remote(self, video_paths, remote_url, max_frames, crop_bounds, target_width, include_filename, expose_images):
         """Upload videos to a remote server for processing and retrieve base64 encoded images."""
         from aiohttp import FormData
         from aiohttp.multipart import MultipartReader
@@ -635,7 +635,9 @@ class MediaProcessor:
                 form = FormData()
                 form.add_field('video', video_data, filename=os.path.basename(video_path), content_type='application/octet-stream')
                 form.add_field('max_frames', str(max_frames))
-                #form.add_field('target_width', str(target_width))
+                form.add_field('target_width', str(target_width))
+                if crop_bounds:
+                    form.add_field('crop_bounds', str(crop_bounds))  # Assuming crop_bounds is a string like "x,y,w,h"
 
                 response = await self.session.post(
                     remote_url,

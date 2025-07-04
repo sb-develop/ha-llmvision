@@ -53,6 +53,7 @@ from .const import (
     INTERVAL,
     DURATION,
     MAX_FRAMES,
+    CROP_BOUNDS,
     INCLUDE_FILENAME,
     EXPOSE_IMAGES,
     GENERATE_TITLE,
@@ -534,6 +535,7 @@ class ServiceCallData:
         self.frigate_retry_seconds = int(
             data_call.data.get(FRIGATE_RETRY_SECONDS, 1))
         self.max_frames = int(data_call.data.get(MAX_FRAMES, 3))
+        self.crop_bounds = data_call.data.get(CROP_BOUNDS, None)
         self.target_width = data_call.data.get(TARGET_WIDTH, 3840)
         self.temperature = float()
         self.max_tokens = int(data_call.data.get(MAXTOKENS, 100))
@@ -651,6 +653,7 @@ def setup(hass, config):
                 request = await processor.add_videos_remote(video_paths=call.video_paths,
                                                             remote_url=call.video_processor,
                                                             max_frames=call.max_frames,
+                                                            crop_bounds=call.crop_bounds,
                                                             target_width=call.target_width,
                                                             include_filename=call.include_filename,
                                                             expose_images=call.expose_images,
