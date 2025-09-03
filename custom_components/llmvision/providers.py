@@ -321,13 +321,34 @@ class Request:
                 return await self.call(call, _is_fallback_retry=True)
             else:
                 response_text = "Couldn't generate content. Check logs for details."
+        result = {}
+        # try to load response_text as json
+        if call.json_response and response_text is not None:
+            try:
+                markdown_prefix = "```"
+                json_prefix = "json"
+                json_text = response_text
+                # remove markdown prefix
+                if json_text.startswith(markdown_prefix):
+                    json_text = json_text[len(markdown_prefix):]
+                if json_text.endswith(markdown_prefix):
+                    json_text = json_text[:-len(markdown_prefix)]
+                # remove json prefix
+                if json_text.startswith(json_prefix):
+                    json_text = json_text[len(json_prefix):]
+                result = json.loads(json_text)
+            except json.JSONDecodeError:
+                pass
+        if "response_text" not in result:
+            result["response_text"] = response_text
+
         gen_title = None
         try:
             if call.generate_title:
                 call.message = (
                     call.memory.title_prompt
                     + "Create a title for this text: "
-                    + response_text
+                    + result.get("response_text", response_text)
                 )
                 gen_title = await provider_instance.title_request(call)
         except Exception as e:
@@ -345,10 +366,8 @@ class Request:
                 return await self.call(call, _is_fallback_retry=True)
             else:
                 gen_title = "Event Detected"
-        result = {}
         if gen_title is not None:
             result["title"] = re.sub(r"[^a-zA-Z0-9ŽžÀ-ÿ\s]", "", gen_title)
-        result["response_text"] = response_text
         return result
 
     def add_frame(self, base64_image, filename):

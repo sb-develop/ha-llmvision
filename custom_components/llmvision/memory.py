@@ -47,7 +47,7 @@ class Memory:
 
     def _get_memory_images(self, memory_type="OpenAI") -> list:
         content = []
-        memory_prompt = "The following images along with descriptions serve as reference. They are not to be mentioned in the response."
+        memory_prompt = "The following images are \"known entities\" along with descriptions."
 
         if memory_type == "OpenAI":
             if self.memory_images:
@@ -176,10 +176,11 @@ class Memory:
                     img = img.convert("RGB")
 
                 # Encode the image to base64
-                img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format="JPEG")
-                base64_image = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
-                encoded_images.append(base64_image)
+                with io.BytesIO() as img_byte_arr:
+                    img.save(img_byte_arr, format="JPEG")
+                    base64_image = base64.b64encode(
+                        img_byte_arr.getvalue()).decode("utf-8")
+                    encoded_images.append(base64_image)
 
         return encoded_images
 

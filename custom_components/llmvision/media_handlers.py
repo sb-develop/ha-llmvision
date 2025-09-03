@@ -39,10 +39,11 @@ class MediaProcessor:
 
     async def _encode_image(self, img):
         """Encode image as base64"""
-        img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format="JPEG")
-        base64_image = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
-        return base64_image
+        with io.BytesIO() as img_byte_arr:
+            img.save(img_byte_arr, format="JPEG")
+            base64_image = base64.b64encode(
+                img_byte_arr.getvalue()).decode("utf-8")
+            return base64_image
 
     async def _save_clip(
         self, clip_data=None, clip_path=None, image_data=None, image_path=None
@@ -56,7 +57,7 @@ class MediaProcessor:
             _LOGGER.info(f"[save_clip] clip: {clip_path}, image: {image_path}")
             if image_data:
                 with open(image_path, "wb") as f:
-                    if type(image_data) == bytes:
+                    if type(image_data) == bytearray or type(image_data) == bytes:
                         f.write(image_data)
                     else:
                         f.write(base64.b64decode(image_data))
@@ -75,11 +76,11 @@ class MediaProcessor:
 
     async def _expose_image(self, frame_name, image_data, uid, frame_path=None):
         # ensure /media/llmvision/snapshots dir exists
-        await self.hass.loop.run_in_executor(
-            None,
-            partial(os.makedirs, self.hass.config.path(f"media/{DOMAIN}/snapshots"), exist_ok=True),
-        )
         if self.key_frame == "":
+            await self.hass.loop.run_in_executor(
+                None,
+                partial(os.makedirs, self.hass.config.path(f"media/{DOMAIN}/snapshots"), exist_ok=True),
+            )
             filename = self.hass.config.path(f"media/{DOMAIN}/snapshots/{uid}-{frame_name}.jpg")
             self.key_frame = filename
             if image_data is None and frame_path is not None:
@@ -156,21 +157,22 @@ class MediaProcessor:
 
         elif image_data:
             # Convert the image to base64
-            img_byte_arr = io.BytesIO()
-            img_byte_arr.write(image_data)
-            img = await self.hass.loop.run_in_executor(None, Image.open, img_byte_arr)
-            with img:
-                await self.hass.loop.run_in_executor(None, img.load)
-                img = self._convert_to_rgb(img)
-                # calculate new height based on aspect ratio
-                width, height = img.size
-                aspect_ratio = width / height
-                target_height = int(target_width / aspect_ratio)
+            with io.BytesIO() as img_byte_arr:
+                img_byte_arr.write(image_data)
+                img_byte_arr.seek(0)
+                img = await self.hass.loop.run_in_executor(None, Image.open, img_byte_arr)
+                with img:
+                    await self.hass.loop.run_in_executor(None, img.load)
+                    img = self._convert_to_rgb(img)
+                    # calculate new height based on aspect ratio
+                    width, height = img.size
+                    aspect_ratio = width / height
+                    target_height = int(target_width / aspect_ratio)
 
-                if width > target_width or height > target_height:
-                    img = img.resize((target_width, target_height))
+                    if width > target_width or height > target_height:
+                        img = img.resize((target_width, target_height))
 
-                base64_image = await self._encode_image(img)
+                    base64_image = await self._encode_image(img)
         elif img:
             with img:
                 img = self._convert_to_rgb(img)
@@ -683,8 +685,10 @@ class MediaProcessor:
 
         # TODO: Add config option to specify path for tmp files.
         # For example: Sometimes config path is located on SD card, and using ramdisk/SSD instead would be much faster and won't wear SD card out
-        tmp_clips_dir = self.hass.config.path(f"custom_components/{DOMAIN}/tmp_clips")
-        tmp_frames_dir = self.hass.config.path(f"custom_components/{DOMAIN}/tmp_frames")
+        #tmp_clips_dir = self.hass.config.path(f"custom_components/{DOMAIN}/tmp_clips")
+        #tmp_frames_dir = self.hass.config.path(f"custom_components/{DOMAIN}/tmp_frames")
+        tmp_clips_dir = 'dev/shm/tmp_clips'
+        tmp_frames_dir = 'dev/shm/tmp_frames'
 
         if not video_paths:
             video_paths = []
@@ -725,6 +729,77 @@ class MediaProcessor:
             _LOGGER.info(f"Deleted tmp folder: {tmp_frames_dir}")
         except FileNotFoundError as e:
             _LOGGER.info(f"Failed to delete tmp folders: {e}")
+        return self.client
+
+    async def add_videos_remote(self, video_paths, remote_url, max_frames, crop_bounds, target_width, include_filename, expose_images):
+        """Upload videos to a remote server for processing and retrieve base64 encoded images."""
+        from aiohttp import FormData
+        from aiohttp.multipart import MultipartReader
+        if not video_paths:
+            raise ServiceValidationError("No video paths provided.")
+
+        for video_path in video_paths:
+            try:
+                video_path = video_path.strip()
+                if not os.path.exists(video_path):
+                    raise ServiceValidationError(f"File {video_path} does not exist")
+
+                # Upload video to remote server
+                def read_file(p):
+                    with open(p, "rb") as video_file:
+                        return video_file.read()
+                video_data = await self.hass.loop.run_in_executor(None, read_file, video_path)
+
+                _LOGGER.info(f"Uploading video {video_path} to {remote_url}")
+                form = FormData()
+                form.add_field('video', video_data, filename=os.path.basename(video_path), content_type='application/octet-stream')
+                form.add_field('max_frames', str(max_frames))
+                form.add_field('target_width', str(target_width))
+                if crop_bounds:
+                    form.add_field('crop_bounds', str(crop_bounds))  # Assuming crop_bounds is a string like "x,y,w,h"
+
+                response = await self.session.post(
+                    remote_url,
+                    data=form
+                )
+
+                if response.status != 200:
+                    raise ServiceValidationError(f"Failed to process video {video_path} remotely. Status: {response.status}")
+
+                # Parse response to get base64 encoded images
+                # Parse the multipart/mixed response
+                reader = MultipartReader.from_response(response)
+                response_data = {"images": []}
+
+                async for part in reader:
+                    if part.headers.get("Content-Type") == "application/json":
+                        # Parse JSON part
+                        json_data = await part.json()
+                        response_data.update(json_data)
+                    elif part.headers.get("Content-Type") == "image/jpeg":
+                        # Parse image part
+                        image_data = await part.read()
+                        if part.name == "key_frame":
+                            response_data["key_frame"] = image_data
+                        else:
+                            response_data["images"].append(image_data)
+                images_data = response_data.get("images", [])
+                if not images_data:
+                    raise ServiceValidationError(f"No images returned for video {video_path}")
+
+                # Process each image
+                for idx, image_data in enumerate(images_data):
+                    resized_image = await self.resize_image(target_width=target_width, image_data=image_data)
+                    filename = f"{os.path.basename(video_path)} (frame {idx + 1})" if include_filename else f"Video frame {idx + 1}"
+                    self.client.add_frame(base64_image=resized_image, filename=filename)
+
+                if expose_images and "key_frame" in response_data:
+                    # Expose key frame if available
+                    await self._expose_image("key_frame", response_data["key_frame"], uid=str(uuid.uuid4())[:8])
+
+            except Exception as e:
+                raise ServiceValidationError(f"Error processing video {video_path}: {e}")
+
         return self.client
 
     async def add_streams(

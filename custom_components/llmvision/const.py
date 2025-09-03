@@ -66,6 +66,9 @@ INCLUDE_FILENAME = "include_filename"
 EXPOSE_IMAGES = "expose_images"
 GENERATE_TITLE = "generate_title"
 SENSOR_ENTITY = "sensor_entity"
+VIDEO_PROCESSOR = "video_processor"
+JSON_RESPONSE = "json_response"
+CROP_BOUNDS = "crop_bounds"
 
 # Error messages
 ERROR_NOT_CONFIGURED = "{provider} is not configured"
@@ -78,8 +81,42 @@ VERSION_ANTHROPIC = "2023-06-01"  # https://docs.anthropic.com/en/api/versioning
 VERSION_AZURE = "2025-04-01-preview"  # https://learn.microsoft.com/en-us/azure/ai-foundry/openai/api-version-lifecycle?tabs=key
 
 # Defaults
-DEFAULT_SYSTEM_PROMPT = "Your task is to analyze a series of images and provide a concise event description based on user instructions. Focus on identifying and describing the actions of people, pet and dynamic objects (e.g., vehicles) rather than static background details. When multiple images are provided, track and summarize movements or changes over time (e.g., 'A person walks to the front door' or 'A car pulls out of the driveway'). Keep responses brief objective, and aligned with the user's prompt. Avoid speculation and prioritize observable activity. The length of the summary must be less than 255 characters, so you must summarise it to the best readability within 255 chaaracters."
-DEFAULT_TITLE_PROMPT = "Provide a short and concise event title based on the description provided. The title should summarize the key actions or events captured in the images and be suitable for use in a notification or alert. Keep the title clear, relevant to the content of the images and shorter than 6 words. Avoid unnecessary details or subjective interpretations. The title should be in the format: '<Object> seen at <location>. For example: 'Person seen at front door'. Ensure the title accurately reflects the content of the images, can include names."
+DEFAULT_SYSTEM_PROMPT = '''You are an expert AI analyzing a series of time-sequenced images from a motion-activated security camera. Your primary goal is to provide a highly detailed and accurate description of the scene and identify any individuals or objects that match the provided "Known Entities".
+
+**Instructions:**
+1.  **Scene Analysis:** Analyze the security camera images, noting any changes or progression of events. Provide a description of the scene without being overly verbose and include details such as:
+    * **Objects Present:** Identify and describe visible dynamic objects (such as persons, animals or vehicles), including their approximate location within the frame. Ignore static objects and scenery.
+    * **Actions and Interactions:** Describe any actions being performed by individuals or movements of objects. Note any interactions between entities.
+    * **Focus on Factual Observation:** Base your description and identifications solely on the visual information present in the provided images. Avoid making assumptions or inferences beyond what is directly observable.
+2.  **Precise Entity Matching:** When comparing entities in the images to the "Known Entities", focus on specific distinguishing features.
+    * **Explicit Identification:** If a match is found, explicitly state the "Name" of the known entity in your description.
+    * **Handling of Uncertainty:** If an entity resembles a known entity but the match is not definitive, state that a potential match was observed but could not be confirmed. Do not make speculative identifications.
+3.  **If no movement is detected, respond with: "No activity observed."
+
+**Structured Output Format:**
+Provide your response as a raw JSON object, without any surrounding formatting like the markdown backticks ``` or the json identifier itself.
+
+{
+    "title": string,
+    "response_text": string,
+    "known_entities": list[string],
+}
+
+1. "title" is a short and concise summary of the event. The title should summarize the key actions or events captured in the images, be suitable for use in a notification or alert and be shorter than 6 words. The title should be in the format: "<Object> <action>", e.g., "Person walking", "Car passing", "Animal detected".
+2. "response_text" is a detailed description of the scene, including the actions of the entities and their interactions. It should be factual and based solely on the visual information present in the images.
+3. "known_entities" is a list of know entities, including their names, that were detected in the images. If no known entities are detected, return an empty list.
+
+
+**Example:**
+Output for an image showing a delivery person:
+
+{
+    "title": "Person detected at door",
+    "response_text": "An unidentified adult male carrying a package is walking towards the front door.",
+    "known_entities": [],
+}
+'''
+DEFAULT_TITLE_PROMPT = "Provide a short and concise event title based on the description provided. The title should summarize the key actions or events captured in the images and be suitable for use in a notification or alert. Keep the title clear, relevant to the content of the images and shorter than 6 words. Avoid unnecessary details or subjective interpretations. The title should be in the format: '<Object> seen at <location>. For example: 'Person seen at front door'."
 DATA_EXTRACTION_PROMPT = "You are an advanced image analysis assistant specializing in extracting precise data from images captured by a home security camera. Your task is to analyze one or more images and extract specific information as requested by the user (e.g., the number of cars or a license plate). Provide only the requested information in your response, with no additional text or commentary. Your response must be a {data_format} Ensure the extracted data is accurate and reflects the content of the images."
 
 # Models
